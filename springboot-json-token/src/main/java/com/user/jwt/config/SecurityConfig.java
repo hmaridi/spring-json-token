@@ -30,12 +30,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	@Value("${security.security-realm}")
 	private String securityRealm;
 
-	/*@Bean
-	@Override
-	protected AuthenticationManager authenticationManager() throws Exception {
-		return super.authenticationManager();
-	}
-*/
+	
 	@Bean
 	public BCryptPasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
@@ -44,13 +39,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and().httpBasic()
-				.realmName(securityRealm).and().csrf().disable();
+		.realmName(securityRealm).and().csrf().disable();
 
 	}
 
 	@Bean
 	public JwtAccessTokenConverter accessTokenConverter() {
-		JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
+		JwtAccessTokenConverter converter = new CustomTokenEnhancer();
 		converter.setSigningKey(signingKey);
 		return converter;
 	}
@@ -75,4 +70,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         throws Exception {
         return super.authenticationManagerBean();
     }
+   public class CustomTokenEnhancer extends JwtAccessTokenConverter {
+	@Override
+	public OAuth2AccessToken enhance(OAuth2AccessToken accessToken, OAuth2Authentication authentication) {
+	User user = (User) authentication.getPrincipal();
+	Map<String, Object> info = new LinkedHashMap<String, Object>(accessToken.getAdditionalInformation());
+	info.put("username", user.getUsername());
+	DefaultOAuth2AccessToken customAccessToken = new DefaultOAuth2AccessToken(accessToken);
+	customAccessToken.setAdditionalInformation(info);
+	return super.enhance(customAccessToken, authentication);
+	  }
+	}
 }
